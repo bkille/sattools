@@ -93,6 +93,10 @@ fn main()
                 .value_parser(value_parser!(usize))
                 .default_value("11"),
         )
+        .arg(
+            arg!(-o --output <OUTPUT_FILE> "Output path")
+                .value_parser(value_parser!(PathBuf))
+        )
         //.arg(
             //arg!(-c --complexity <VALUE> "Kmer complexity threshold")
                 //.value_parser(value_parser!(f64))
@@ -114,6 +118,7 @@ fn main()
     let segment_size = *matches.get_one::<usize>("segment").unwrap();
     let kmer_size = *matches.get_one::<usize>("kmer").unwrap();
     //let complexity_threshold = *matches.get_one::<f64>("complexity").unwrap();
+    let output_path = matches.get_one::<PathBuf>("output");
     let thread_count = *matches.get_one::<usize>("threads").unwrap();
 
 
@@ -133,15 +138,15 @@ fn main()
 
     rec_idx_pairs.sort();
 
-    let mut write_file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open("out.txt")
-        .unwrap();
-
+    let mut out_writer = match output_path {
+    Some(x) => {
+        let path = Path::new(&x);
+        Box::new(File::create(path).unwrap()) as Box<dyn Write>
+    }
+    None => Box::new(io::stdout()) as Box<dyn Write>,
+};
     rec_idx_pairs.iter().for_each(|(_i, id)| {
         let mut input = File::open(format!("/tmp/{}.txt", id)).unwrap();
-        let _ = io::copy(&mut input, &mut write_file);
+        let _ = io::copy(&mut input, &mut out_writer);
     });
 }
